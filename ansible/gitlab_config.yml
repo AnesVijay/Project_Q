@@ -1,0 +1,154 @@
+- name: Gitlab configuration
+  hosts: gitlab
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+        
+    - name: Install packages
+      apt:
+        pkg:
+          - curl
+          - openssh-server
+          - ca-certificates
+          - tzdata
+          - perl
+          - python3-pip
+        update_cache: yes
+      become: yes
+
+    - name: Add Gitlab package repository
+      shell: curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | bash
+      become: yes
+
+    - name: Wait 30 seconds after adding gitlab package
+      wait_for:
+        timeout: 30
+
+    - name: Install Gitlab package
+      apt:
+        pkg:
+          - gitlab-ce
+        update_cache: yes
+      environment:
+        EXTERNAL_URL: "http://{{ ansible_ssh_host }}"
+        GITLAB_ROOT_PASSWORD: "{{ gitlab_root_pass }}"
+      become: yes
+
+    - name: Wait a minute for Gitlab boot
+      wait_for:
+        timeout: 60
+
+    - name: Install pip module 'gitlab'
+      pip:
+        name:
+          - python-gitlab
+
+    - name: Create a Gitlab group
+      community.general.gitlab_group:
+        validate_certs: false
+        api_url: "http://{{ ansible_ssh_host }}"
+        api_username: root
+        api_password: "{{ gitlab_root_pass }}"
+        name: "{{ group_name }}"
+        path: "{{ group_name }}"
+        state: present
+      register: gitlab_group
+
+    - name: Create Gitlab project in created group
+      community.general.gitlab_project:
+        api_url: "http://{{ ansible_ssh_host }}"
+        validate_certs: false
+        api_username: root
+        api_password: "{{ gitlab_root_pass }}"
+        name: "{{ proj_name }}"
+        group: "{{ group_name }}"
+        issues_enabled: false
+        snippets_enabled: true
+        initialize_with_readme: true
+        default_branch: main
+        state: present
+    
+    - name: Check if config backup exists
+      stat:
+        path: /etc/gitlab/gitlab.rb.backup
+      register: backup_result
+    
+    - name: Copy previous config file for backup
+      ansible.builtin.copy:
+        src: /etc/gitlab/gitlab.rb
+        dest: /etc/gitlab/gitlab.rb.backup
+        remote_src: yes
+      become: yes
+      when: not backup_result.stat.exists
+    
+    - name: Config Gitlab for external Prometheus
+      ansible.builtin.lineinfile:
+        path: /etc/gitlab/gitlab.rb
+        insertbefore: BOF
+        line: |
+            prometheus['enable'] = false
+            node_exporter['listen_address'] = '0.0.0.0:9100'
+            gitlab_workhorse['prometheus_listen_addr'] = "0.0.0.0:9229"
+            gitlab_exporter['listen_address'] = '0.0.0.0'
+            gitlab_exporter['listen_port'] = '9168'
+            registry['debug_addr'] = '0.0.0.0:5001'
+            sidekiq['listen_address'] = '0.0.0.0'
+            redis_exporter['listen_address'] = '0.0.0.0:9121'
+            postgres_exporter['listen_address'] = '0.0.0.0:9187'
+            gitaly['configuration'] = {
+              prometheus_listen_addr: '0.0.0.0:9236',
+            }
+            gitlab_rails['prometheus_address'] = '{{ hostvars['prometheus']['ansible_host'] }}:9999'
+            nginx['status']['options'] = {
+             "server_tokens" => "off",
+             "access_log" => "off",
+             "allow" => ["{{ hostvars["prometheus"]["ansible_host"] }}"],
+             "deny" => "all",
+            }
+            gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8', '{{ hostvars['prometheus']['ansible_host'] }}']
+        # line: "{{ item }}"
+      # with_items:
+        # - "gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8', '{{ hostvars['prometheus']['ansible_host'] }}']"
+        # - '}'
+        # - ' "deny" => "all",'
+        # - ' "allow" => ["{{ hostvars["prometheus"]["ansible_host"] }}"],'
+        # - ' "access_log" => "off",'
+        # - ' "server_tokens" => "off",'
+        # - nginx['status']['options'] = {
+        # - "gitlab_rails['prometheus_address'] = '{{ hostvars['prometheus']['ansible_host'] }}:9999'" #gitlab-sidekiq
+        # - "   prometheus_listen_addr: '0.0.0.0:9236',}"
+        # - gitaly['configuration'] = {
+        # - postgres_exporter['listen_address'] = '0.0.0.0:9187'
+        # - redis_exporter['listen_address'] = '0.0.0.0:9121'
+        # - sidekiq['listen_address'] = '0.0.0.0'
+        # - registry['debug_addr'] = '0.0.0.0:5001'
+        # - gitlab_exporter['listen_port'] = '9168'
+        # - gitlab_exporter['listen_address'] = '0.0.0.0'
+        # - gitlab_workhorse['prometheus_listen_addr'] = "0.0.0.0:9229"
+        # - node_exporter['listen_address'] = '0.0.0.0:9100'
+        # - prometheus['enable'] = false
+      become: yes
+    
+    - name: Recofigure Gitlab
+      shell: gitlab-ctl reconfigure
+      become: true
+
+#     - name: "Please create your personal access token in GitLab web UI (http://{{ ansible_ssh_host }}/-/user_settings/personal_access_tokens)"
+#       pause:
+#         prompt: "Enter root personal access token with scopes: api, read_repository, write_repository"
+#       register: gitlab_root_token
+#       when: gitlab_root_token is not defined
+#       no_log: yes
+
+# - hosts: localhost
+#   gather_facts: no
+
+#   tasks:
+#     - name: Save Personal Access Token for future into variable
+#       lineinfile:
+#         path: vars.yml
+#         insertafter: EOF
+#         line: "gitlab_root_token: {{ hostvars['gitlab']['gitlab_root_token']['user_input'] }}"
+#       when: '"user_input" in hostvars["gitlab"]["gitlab_root_token"]'

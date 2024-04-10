@@ -1,0 +1,9 @@
+#cloud-config
+ssh_pwauth: no
+users:
+  - name: esjay
+    groups: sudo,docker
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh_authorized_keys:
+     - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK8Ft8ekVVYT1NHqjOmLYHjAMoRBdynloLaP8wmzQsDU es_jay@DESK-TOP

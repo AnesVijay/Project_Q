@@ -1,0 +1,6 @@
+gitlab_root_pass: <password>
+group_name: devops_group
+proj_name: devops_proj
+ssh_key_title: group_coders
+
+path_to_store_git_ssh_keys: "/home/{{ ansible_user_id }}/.ssh/id_ed25519"

@@ -1,0 +1,7 @@
+.vscode
+terra_yc/.terraform*
+terra_yc/plan
+terra_yc/*tfstate*
+venv
+Project_q.*
+terraform*

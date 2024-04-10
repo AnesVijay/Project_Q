@@ -1,0 +1,16 @@
+FROM python:3.10-bookworm
+
+ARG user
+ARG ip
+
+RUN pip install gitpython python-gitlab
+RUN apt install -y git
+RUN useradd -ms /bin/bash $user
+RUN mkdir -p /root/.ssh && \
+    echo "StrictHostKeyChecking no" > /root/.ssh/config && \
+    chmod 400 /root/.ssh/config
+
+COPY . /coders
+WORKDIR /coders
+
+ENTRYPOINT ["python", "-u", "coders.py"]
