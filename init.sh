@@ -2,6 +2,7 @@
 
 needs_to_int_terraform=''
 password=""
+needs_to_config_python=''
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -16,6 +17,9 @@ while [[ $# -gt 0 ]]; do
         echo "Нужно указать пароль"
         exit 1
       fi
+      ;;
+    -cp | --config_python)
+        needs_to_config_python='yes'
       ;;
     -h | --help | *)
       echo "Введите флаг '-p' с указанием пароля, который будет задан аккаунту администратора сервера GitLab"
@@ -50,8 +54,13 @@ python python-ops/save_ips.py
 
 cd_root
 
-echo "############ Конфигурируем локальное виртуальное окружение python для работы с ansible"
+
+if [[ $needs_to_config_python == 'yes' ]]
+then
+    echo "############ Конфигурируем локальное виртуальное окружение python для работы с ansible"
 . ./configure-python.sh
+fi
+
 
 # if [[ $needs_new_token == 'true' ]]
 # then
