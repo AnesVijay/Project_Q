@@ -5,3 +5,4 @@ terra_yc/*tfstate*
 venv
 Project_q.*
 terraform*
+ansible/hosts.ini
