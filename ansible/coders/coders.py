@@ -1,6 +1,5 @@
 import time
 import random
-from gitlab import Gitlab
 import git
 from pathlib import Path
 from datetime import datetime

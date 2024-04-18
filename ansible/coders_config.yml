@@ -79,20 +79,8 @@
 ##### конфигурируем докер для мониторинга из Прометеуса ( конец )
 
     - name: Build Coders image
-      shell: "docker build --build-arg user={{ ansible_user_id }} --build-arg ip={{ hostvars['gitlab']['ansible_host'] }} -t coders-image:latest /coders -f /coders/Dockerfile.coders"
+      shell: "docker build --build-arg user={{ ansible_user_id }} -t coders-image:latest /coders -f /coders/Dockerfile.coders"
       become: yes
-    # - name: Build Coders image
-    #   community.docker.docker_image:
-    #     build:
-    #       dockerfile: /coders/Dockerfile.coders
-    #       path: /
-    #       args:
-    #         user: "{{ ansible_user_id }}"
-    #     source: build
-    #     name: coders-image
-    #     tag: latest
-    #     state: present
-    #   become: yes
 
     - name: "Create Coders container #1"
       community.docker.docker_container:
@@ -102,7 +90,6 @@
         network_mode: host
         env:
           GITLAB_IP: "{{ hostvars['gitlab']['ansible_host'] }}"
-          # GITLAB_TOKEN: "{{ gitlab_root_token }}"
           GITLAB_GROUP_NAME: "{{ group_name }}"
           GITLAB_PROJ_NAME: "{{ proj_name }}"
           PATH_TO_SSH_KEY: "{{ path_to_store_git_ssh_keys }}"
@@ -122,7 +109,6 @@
         network_mode: host
         env:
           GITLAB_IP: "{{ hostvars['gitlab']['ansible_host'] }}"
-          # GITLAB_TOKEN: "{{ gitlab_root_token }}"
           GITLAB_GROUP_NAME: "{{ group_name }}"
           GITLAB_PROJ_NAME: "{{ proj_name }}"
           PATH_TO_SSH_KEY: "{{ path_to_store_git_ssh_keys }}"

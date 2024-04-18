@@ -1,7 +1,6 @@
 FROM python:3.10-bookworm
 
 ARG user
-ARG ip
 
 RUN pip install gitpython python-gitlab
 RUN apt install -y git

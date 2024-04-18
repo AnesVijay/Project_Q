@@ -30,8 +30,6 @@
         dest: "/srv/prometheus"
         remote_src: false
 
-    # - name: Build custom Prometheus image
-    #   shell: 'docker build -t my-prom-image:latest /srv/prometheus -f /srv/prometheus/Dockerfile.prometheus'
     - name: Build custom Prometheus image
       docker_image:
         build:
@@ -47,7 +45,6 @@
         name: prometheus
         restart_policy: always
         image: prom/prometheus:latest
-        # network_mode: host
         etc_hosts:
           gitlab.my: "{{ hostvars['gitlab']['ansible_host'] }}"
           coders.docker: "{{ hostvars['coders']['ansible_host'] }}"
