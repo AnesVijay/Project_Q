@@ -11,6 +11,7 @@ resource "yandex_compute_instance" "gitlab" {
   zone        = var.zone
 
   resources {
+    core_fraction = 20
     cores  = 4
     memory = 8
   }
@@ -38,6 +39,7 @@ resource "yandex_compute_instance" "coders" {
   zone        = var.zone
 
   resources {
+    core_fraction = 5
     cores  = 2
     memory = 2
   }
@@ -45,7 +47,7 @@ resource "yandex_compute_instance" "coders" {
   boot_disk {
     initialize_params {
       image_id = data.yandex_compute_image.ubuntu-2204-latest.id
-      size = 10
+      size = 8
     }
   }
 
@@ -65,6 +67,7 @@ resource "yandex_compute_instance" "prometheus" {
   zone        = var.zone
 
   resources {
+    core_fraction = 5
     cores  = 2
     memory = 2
   }
@@ -73,6 +76,34 @@ resource "yandex_compute_instance" "prometheus" {
     initialize_params {
       image_id = data.yandex_compute_image.ubuntu-2204-latest.id
       size = 20
+    }
+  }
+
+  network_interface {
+    subnet_id = data.yandex_vpc_subnet.default-subnet.id
+    ipv6      = false
+    nat       = true
+  }
+
+  metadata = {
+    user-data = "${file("vm-ssh-init.yml")}"
+  }
+}
+
+resource "yandex_compute_instance" "prod" {
+  name        = "prod"
+  zone        = var.zone
+
+  resources {
+    core_fraction = 5
+    cores  = 2
+    memory = 1
+  }
+
+  boot_disk {
+    initialize_params {
+      image_id = data.yandex_compute_image.ubuntu-2204-latest.id
+      size = 8
     }
   }
 
@@ -97,4 +128,8 @@ output "coders-server-ip" {
 
 output "prometheus-server-ip" {
   value = yandex_compute_instance.prometheus.network_interface.0.nat_ip_address
+}
+
+output "production-server-ip" {
+  value = yandex_compute_instance.prod.network_interface.0.nat_ip_address
 }
