@@ -5,7 +5,7 @@
     - vars.yml
 
   tasks:
-        
+
     - name: Install packages
       apt:
         pkg:
@@ -22,9 +22,9 @@
       shell: curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | bash
       become: yes
 
-    - name: Wait 30 seconds after adding gitlab package
+    - name: Wait 10 seconds after adding gitlab package
       wait_for:
-        timeout: 30
+        timeout: 10
 
     - name: Install Gitlab package
       apt:
@@ -36,9 +36,12 @@
         GITLAB_ROOT_PASSWORD: "{{ gitlab_root_pass }}"
       become: yes
 
-    - name: Wait a minute for Gitlab boot
-      wait_for:
-        timeout: 60
+    - name: Wait for a Gitlab boot
+      shell: gitlab-ctl status
+      register: shell_res
+      delay: 30
+      until: shell_res.stdout_lines | reject('search','^run') | list | count == 0
+      become: yes
 
     - name: Install pip module 'gitlab'
       pip:
@@ -69,12 +72,12 @@
         initialize_with_readme: true
         default_branch: main
         state: present
-    
+
     - name: Check if config backup exists
       stat:
         path: /etc/gitlab/gitlab.rb.backup
       register: backup_result
-    
+
     - name: Copy previous config file for backup
       ansible.builtin.copy:
         src: /etc/gitlab/gitlab.rb
@@ -82,7 +85,7 @@
         remote_src: yes
       become: yes
       when: not backup_result.stat.exists
-    
+
     - name: Config Gitlab for external Prometheus
       ansible.builtin.lineinfile:
         path: /etc/gitlab/gitlab.rb
