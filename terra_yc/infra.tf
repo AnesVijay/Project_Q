@@ -6,12 +6,14 @@ data "yandex_compute_image" "ubuntu-2204-latest" {
   family = "ubuntu-2204-lts"
 }
 
+
+
 resource "yandex_compute_instance" "gitlab" {
   name        = "gitlab"
   zone        = var.zone
 
   resources {
-    core_fraction = 20
+    core_fraction = 100
     cores  = 4
     memory = 8
   }
@@ -117,6 +119,8 @@ resource "yandex_compute_instance" "prod" {
     user-data = "${file("vm-ssh-init.yml")}"
   }
 }
+
+
 
 output "gitlab-server-ip" {
   value = yandex_compute_instance.gitlab.network_interface.0.nat_ip_address
