@@ -36,33 +36,33 @@ resource "yandex_compute_instance" "gitlab" {
   }
 }
 
-resource "yandex_compute_instance" "coders" {
-  name        = "coders"
-  zone        = var.zone
+# resource "yandex_compute_instance" "coders" {
+#   name        = "coders"
+#   zone        = var.zone
 
-  resources {
-    core_fraction = 5
-    cores  = 2
-    memory = 2
-  }
+#   resources {
+#     core_fraction = 5
+#     cores  = 2
+#     memory = 2
+#   }
 
-  boot_disk {
-    initialize_params {
-      image_id = data.yandex_compute_image.ubuntu-2204-latest.id
-      size = 8
-    }
-  }
+#   boot_disk {
+#     initialize_params {
+#       image_id = data.yandex_compute_image.ubuntu-2204-latest.id
+#       size = 8
+#     }
+#   }
 
-  network_interface {
-    subnet_id = data.yandex_vpc_subnet.default-subnet.id
-    ipv6      = false
-    nat       = true
-  }
+#   network_interface {
+#     subnet_id = data.yandex_vpc_subnet.default-subnet.id
+#     ipv6      = false
+#     nat       = true
+#   }
 
-  metadata = {
-    user-data = "${file("vm-ssh-init.yml")}"
-  }
-}
+#   metadata = {
+#     user-data = "${file("vm-ssh-init.yml")}"
+#   }
+# }
 
 resource "yandex_compute_instance" "prometheus" {
   name        = "prometheus"
@@ -126,9 +126,9 @@ output "gitlab-server-ip" {
   value = yandex_compute_instance.gitlab.network_interface.0.nat_ip_address
 }
 
-output "coders-server-ip" {
-  value = yandex_compute_instance.coders.network_interface.0.nat_ip_address
-}
+# output "coders-server-ip" {
+#   value = yandex_compute_instance.coders.network_interface.0.nat_ip_address
+# }
 
 output "prometheus-server-ip" {
   value = yandex_compute_instance.prometheus.network_interface.0.nat_ip_address

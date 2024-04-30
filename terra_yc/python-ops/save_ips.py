@@ -6,7 +6,8 @@ def main():
 
     ips = {
         "gitlab" : "-1",
-        "coders" : "-1",
+        # "coders" : "-1",
+        "prod" : "1",
         "prometheus" : "-1"
     }
 
@@ -20,11 +21,13 @@ def main():
     for i in range(len(hosts_data)):
         if hosts_data[i].startswith("gitlab"):
             hosts_data[i] = f"gitlab ansible_host={ips['gitlab']}\n"
-        elif hosts_data[i].startswith("coders"):
-            hosts_data[i] = f"coders ansible_host={ips['coders']}\n"
+        # elif hosts_data[i].startswith("coders"):
+        #     hosts_data[i] = f"coders ansible_host={ips['coders']}\n"
+        elif hosts_data[i].startswith("prod"):
+            hosts_data[i] = f"prod ansible_host={ips['prod']}\n"
         elif hosts_data[i].startswith("prometheus"):
             hosts_data[i] = f"prometheus ansible_host={ips['prometheus']}\n"
-        
+
     with open(f"{root_path}/ansible/hosts.ini", "w") as f:
         f.writelines(hosts_data)
 
