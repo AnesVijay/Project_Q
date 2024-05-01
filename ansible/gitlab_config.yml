@@ -56,8 +56,8 @@
         api_password: "{{ gitlab_root_pass }}"
         name: "{{ group_name }}"
         path: "{{ group_name }}"
+        visibility: public
         state: present
-      register: gitlab_group
 
     - name: Create Gitlab project in created group
       community.general.gitlab_project:
@@ -71,13 +71,14 @@
         snippets_enabled: true
         initialize_with_readme: true
         default_branch: main
+        visibility: public
         state: present
-
+    
     - name: Check if config backup exists
       stat:
         path: /etc/gitlab/gitlab.rb.backup
       register: backup_result
-
+    
     - name: Copy previous config file for backup
       ansible.builtin.copy:
         src: /etc/gitlab/gitlab.rb
@@ -85,7 +86,7 @@
         remote_src: yes
       become: yes
       when: not backup_result.stat.exists
-
+    
     - name: Config Gitlab for external Prometheus
       ansible.builtin.lineinfile:
         path: /etc/gitlab/gitlab.rb
@@ -103,16 +104,115 @@
             gitaly['configuration'] = {
               prometheus_listen_addr: '0.0.0.0:9236',
             }
-            gitlab_rails['prometheus_address'] = '{{ hostvars['prometheus']['ansible_host'] }}:9999'
+            gitlab_rails['prometheus_address'] = '{{ hostvars['monitor']['ansible_host'] }}:9999'
             nginx['status']['options'] = {
              "server_tokens" => "off",
              "access_log" => "off",
-             "allow" => ["{{ hostvars["prometheus"]["ansible_host"] }}"],
+             "allow" => ["{{ hostvars["monitor"]["ansible_host"] }}"],
              "deny" => "all",
             }
-            gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8', '{{ hostvars['prometheus']['ansible_host'] }}']
+            gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8', '{{ hostvars['monitor']['ansible_host'] }}']
       become: yes
+      when: not backup_result.stat.exists
     
     - name: Recofigure Gitlab
       shell: gitlab-ctl reconfigure
       become: true
+      when: not backup_result.stat.exists
+
+# ----------------- Add Promtail agent for Loki monitoring ------------------ #
+    - name: Check folder for Promtail config is exists
+      ansible.builtin.file:
+        path: /srv/promtail
+        mode: 0777
+        state: directory
+      become: yes
+
+    - name: Copy my promtail config to server
+      copy:
+        src: "loki/promtail-agent.yml"
+        dest: "/srv/promtail"
+        remote_src: false
+    
+    - ansible.builtin.import_tasks:
+        file: docker-install.yml
+      become: yes
+
+    - name: Create promtail container
+      community.docker.docker_container:
+        name: promtail
+        restart_policy: unless-stopped
+        image: grafana/promtail:2.9.2
+        etc_hosts:
+          loki.my: "{{ hostvars['monitor']['ansible_host'] }}"
+        volumes:
+          - /srv/promtail/promtail-agent.yml:/etc/promtail/promtail.yml
+          - /grafana_main_data:/var/lib/grafana
+          - /var/log:/var/log
+        command: --config.file=/etc/promtail/promtail.yml
+      become: yes
+
+    
+    # - name: Check if repo is already exist
+    #   ansible.builtin.stat:
+    #     path: /opt/TTGFinder
+    #   register: proj_folder
+
+    # - name: Clone a repo from GitHub
+    #   ansible.builtin.git:
+    #     repo: https://github.com/ATAS-Digital/TTGFinder.git
+    #     dest: /opt/TTGFinder
+    #   become: yes
+    #   when: not proj_folder.stat.exists
+
+# TODO: добавить копирование .gitlab-ci.yml в репозиторий
+    
+    # - name: Push repo to Gitlab manually (via script in /opt)
+    #   ansible.builtin.pause:
+    #     minutes: 2
+
+# TODO: установить gitlab-runner на этот сервер GitLab'а
+
+
+
+    # - name: Create ssh key pair for using git
+    #   community.crypto.openssh_keypair:
+    #     path: "{{ path_to_store_git_ssh_keys }}"
+    #     type: ed25519
+    #     state: present
+    #   register: ssh_key_pair
+
+    # # - name: Deploy an ssh key for project
+    # #   community.general.gitlab_deploy_key:
+    # #     api_url: "http://{{ hostvars['gitlab']['ansible_host'] }}"
+    # #     api_username: root
+    # #     api_password: "{{ gitlab_root_pass }}"
+    # #     project: "{{ group_name }}/{{ proj_name }}"
+    # #     title: "{{ ssh_key_title }}"
+    # #     state: present
+    # #     can_push: true
+    # #     key: "{{ ssh_key_pair.public_key | string }}"
+
+    # # - name: Copy git script
+    # #   copy:
+    # #     src: gitlab/git-prepare.sh
+    # #     dest: /opt
+    # #     mode: +x
+    # #     remote_src: false
+    # #   become: yes
+    
+    # # - name: Copy ch-dir script
+    # #   copy:
+    # #     src: gitlab/ch-dir.sh
+    # #     dest: /opt
+    # #     mode: +x
+    # #     remote_src: false
+    # #   become: yes
+
+    # - name: Push repo to Gitlab
+    #   shell: '/opt/git-prepare.sh -link http://root:{{ gitlab_root_pass }}@{{ ansible_ssh_host }}/TTGFinder_group/TTGFinder.git'
+    #   args:
+    #     chdir: /opt
+    #   become: yes
+
+
