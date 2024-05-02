@@ -6,3 +6,4 @@ venv
 Project_q.*
 terraform*
 ansible/hosts.ini
+src
