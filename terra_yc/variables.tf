@@ -8,10 +8,7 @@ variable "subnet" {
   type    = string
 }
 
-variable "user" {
-  default = "esjay"
-  type = string
-}
+variable "user" { default = "esjay" }
 
 variable "public_key" {
   default = "~/.ssh/id_ed25519.pub"

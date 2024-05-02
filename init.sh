@@ -66,6 +66,7 @@ cd_terraform
 if [[ $needs_to_int_terraform == 'true' ]]
 then
     echo "############ Создаём виртуальную инфраструктуру с помощью Terraform"
+    sed -i "/variable \"user\"/s/default = \".*\"/default = \"$remote_user\"/" variables.tf
     echo '... Инициализируем провайдера Terraform'
     terraform init
     terraform plan -out plan
@@ -89,8 +90,11 @@ fi
 echo "############ Сконфигурируем сервер GitLab"
 ansible-playbook  ansible/gitlab_config.yml
 
-echo "############ Сконфигурируем сервер имитации разработчиков"
-ansible-playbook  ansible/coders_config.yml
+# echo "############ Сконфигурируем сервер имитации разработчиков"
+# ansible-playbook  ansible/coders_config.yml
+
+# echo "############ Сконфигурируем production сервер"
+# ansible-playbook  ansible/prod_config.yml
 
 echo "############ Сконфигурируем сервер мониторинга"
 ansible-playbook  ansible/monitor_config.yml
