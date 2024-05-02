@@ -69,89 +69,80 @@
         group: "{{ group_name }}"
         issues_enabled: false
         snippets_enabled: true
-        initialize_with_readme: true
-        default_branch: main
+        initialize_with_readme: false
+        #default_branch: main
         visibility: public
         state: present
-    
-    - name: Check if config backup exists
-      stat:
-        path: /etc/gitlab/gitlab.rb.backup
-      register: backup_result
-    
-    - name: Copy previous config file for backup
-      ansible.builtin.copy:
-        src: /etc/gitlab/gitlab.rb
-        dest: /etc/gitlab/gitlab.rb.backup
-        remote_src: yes
+
+    - name: Check if repo is already exist
+      ansible.builtin.stat:
+        path: /var/TTGFinder
+      register: proj_folder
+
+    - name: Clone a repo from GitHub
+      ansible.builtin.git:
+        repo: https://github.com/ATAS-Digital/TTGFinder.git
+        dest: /var/TTGFinder
       become: yes
-      when: not backup_result.stat.exists
-    
-    - name: Config Gitlab for external Prometheus
-      ansible.builtin.lineinfile:
-        path: /etc/gitlab/gitlab.rb
-        insertbefore: BOF
-        line: |
-            prometheus['enable'] = false
-            node_exporter['listen_address'] = '0.0.0.0:9100'
-            gitlab_workhorse['prometheus_listen_addr'] = "0.0.0.0:9229"
-            gitlab_exporter['listen_address'] = '0.0.0.0'
-            gitlab_exporter['listen_port'] = '9168'
-            registry['debug_addr'] = '0.0.0.0:5001'
-            sidekiq['listen_address'] = '0.0.0.0'
-            redis_exporter['listen_address'] = '0.0.0.0:9121'
-            postgres_exporter['listen_address'] = '0.0.0.0:9187'
-            gitaly['configuration'] = {
-              prometheus_listen_addr: '0.0.0.0:9236',
-            }
-            gitlab_rails['prometheus_address'] = '{{ hostvars['monitor']['ansible_host'] }}:9999'
-            nginx['status']['options'] = {
-             "server_tokens" => "off",
-             "access_log" => "off",
-             "allow" => ["{{ hostvars["monitor"]["ansible_host"] }}"],
-             "deny" => "all",
-            }
-            gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8', '{{ hostvars['monitor']['ansible_host'] }}']
+      when: not proj_folder.stat.exists
+
+    - name: Copy git script
+      copy:
+        src: "gitlab/{{ item }}"
+        dest: /var
+        mode: +x
+        remote_src: false
+      with_items:
+        - "git-prepare.sh"
+        - "ch-dir.sh"
       become: yes
-      when: not backup_result.stat.exists
-    
-    - name: Recofigure Gitlab
-      shell: gitlab-ctl reconfigure
-      become: true
-      when: not backup_result.stat.exists
+
+    # - name: "Push repo to Gitlab with the fllowing command"
+    #   ansible.builtin.pause:
+    #     prompt: '/var/git-prepare.sh -link http://{{ ansible_ssh_host }}/{{ group_name }}/{{ proj_name }}.git'
+
+    - name: Push repo to Gitlab
+      expect:
+        command: "/var/git-prepare.sh -link http://{{ ansible_ssh_host }}/{{ group_name }}/{{ proj_name }}.git"
+        chdir: /var
+        responses:
+          Username *: "root"
+          Password *: "{{ gitlab_root_pass }}"
+        timeout: 60
+      become: yes
 
 # ----------------- Add Promtail agent for Loki monitoring ------------------ #
-    - name: Check folder for Promtail config is exists
-      ansible.builtin.file:
-        path: /srv/promtail
-        mode: 0777
-        state: directory
-      become: yes
+    # - name: Check folder for Promtail config is exists
+    #   ansible.builtin.file:
+    #     path: /srv/promtail
+    #     mode: 0777
+    #     state: directory
+    #   become: yes
 
-    - name: Copy my promtail config to server
-      copy:
-        src: "loki/promtail-agent.yml"
-        dest: "/srv/promtail"
-        remote_src: false
+    # - name: Copy my promtail config to server
+    #   copy:
+    #     src: "loki/promtail-agent.yml"
+    #     dest: "/srv/promtail"
+    #     remote_src: false
     
-    - ansible.builtin.import_tasks:
-        file: docker-install.yml
-      become: yes
+    # - ansible.builtin.import_tasks:
+    #     file: docker-install.yml
+    #   become: yes
 
-    - name: Create promtail container
-      community.docker.docker_container:
-        name: promtail
-        restart_policy: unless-stopped
-        image: grafana/promtail:2.9.2
-        etc_hosts:
-          loki.my: "{{ hostvars['monitor']['ansible_host'] }}"
-        volumes:
-          - /srv/promtail/promtail-agent.yml:/etc/promtail/promtail.yml
-          - /grafana_main_data:/var/lib/grafana
-          - /var/log:/var/log
-        command: --config.file=/etc/promtail/promtail.yml
-      become: yes
-
+    # - name: Create promtail container
+    #   community.docker.docker_container:
+    #     name: promtail
+    #     restart_policy: unless-stopped
+    #     image: grafana/promtail:2.9.2
+    #     etc_hosts:
+    #       loki.my: "{{ hostvars['monitor']['ansible_host'] }}"
+    #     volumes:
+    #       - /srv/promtail/promtail-agent.yml:/etc/promtail/promtail.yml
+    #       - /grafana_main_data:/var/lib/grafana
+    #       - /var/log:/var/log
+    #     command: --config.file=/etc/promtail/promtail.yml
+    #   become: yes
+# ----------------- ... ---------------- #
     
     # - name: Check if repo is already exist
     #   ansible.builtin.stat:
@@ -172,8 +163,6 @@
     #     minutes: 2
 
 # TODO: установить gitlab-runner на этот сервер GitLab'а
-
-
 
     # - name: Create ssh key pair for using git
     #   community.crypto.openssh_keypair:

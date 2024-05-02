@@ -71,8 +71,8 @@ then
     terraform init
     terraform plan -out plan
     terraform apply -auto-approve "plan"
-    echo "... Подождём инициализации виртуальных машин (15 секунд)"
-    sleep 15
+    echo "... Подождём инициализации виртуальных машин (20 секунд)"
+    sleep 20
 fi
 python python-ops/save_ips.py
 
@@ -96,5 +96,5 @@ ansible-playbook  ansible/gitlab_config.yml
 # echo "############ Сконфигурируем production сервер"
 # ansible-playbook  ansible/prod_config.yml
 
-echo "############ Сконфигурируем сервер мониторинга"
-ansible-playbook  ansible/monitor_config.yml
+# echo "############ Сконфигурируем сервер мониторинга"
+# ansible-playbook  ansible/monitor_config.yml
