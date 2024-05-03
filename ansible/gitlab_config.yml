@@ -86,7 +86,7 @@
       become: yes
       when: not proj_folder.stat.exists
 
-    - name: Copy git script
+    - name: Copy bash scripts to repo
       copy:
         src: "gitlab/{{ item }}"
         dest: /var
@@ -95,6 +95,19 @@
       with_items:
         - "git-prepare.sh"
         - "ch-dir.sh"
+        - "build-maven-project.sh"
+      become: yes
+    
+    - name: Add docker files to repo
+      copy:
+        src: "gitlab/{{ item }}"
+        dest: /var/TTGFinder
+        remote_src: false
+      with_items:
+        #- .gitlab-ci.yml
+        - docker-compose.yml
+        - Dockerfile
+        - nginx/nginx.conf
       become: yes
 
     - name: Push repo to Gitlab

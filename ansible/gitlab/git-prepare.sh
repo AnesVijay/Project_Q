@@ -18,7 +18,7 @@ done
 source ch-dir.sh
 cd_proj
 
-rm -rf .git README.md
+rm -rf .git #README.md
 git init
 git branch -M main
 git remote add origin $link
