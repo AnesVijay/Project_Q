@@ -1,0 +1,36 @@
+stages:
+    - build
+    - deploy-stage
+    - load_testing
+
+build:
+  stage: build
+  script:
+    - mvn clean install -Dmaven.test.skip=true
+  artifacts:
+    paths:
+      - "target/*.jar"
+    untracked: true
+    when: on_success
+    access: all
+    expire_in: "3 days"
+  tags:
+    - docker-runner
+
+deploy_stage:
+  stage: deploy-stage
+  script:
+    - docker compose -f /var/TTGFinder/docker-compose.yml up -d
+  tags:
+    - prod-runner
+  dependencies:
+    - "build"
+
+# load_testing:
+#   stage: load_testing
+#   script:
+#     - docker compose -f /var/TTGFinder/docker-compose.yml up -d
+#     - echo "..."
+#   when: manual
+#   tags:
+#     - prod-runner

@@ -30,6 +30,7 @@
       apt:
         pkg:
           - gitlab-ce
+        state: present
         update_cache: yes
       environment:
         EXTERNAL_URL: "http://{{ ansible_ssh_host }}"
@@ -70,7 +71,6 @@
         issues_enabled: false
         snippets_enabled: true
         initialize_with_readme: false
-        #default_branch: main
         visibility: public
         state: present
 
@@ -97,17 +97,23 @@
         - "ch-dir.sh"
         - "build-maven-project.sh"
       become: yes
-    
+
     - name: Add docker files to repo
       copy:
         src: "gitlab/{{ item }}"
         dest: /var/TTGFinder
         remote_src: false
       with_items:
-        #- .gitlab-ci.yml
         - docker-compose.yml
         - Dockerfile
         - nginx/nginx.conf
+      become: yes
+    
+    - name: Copy gitlab pipline file to repo
+      copy:
+        src: gitlab/.gitlab-ci.yml
+        dest: /var/TTGFinder
+        remote_src: false
       become: yes
 
     - name: Push repo to Gitlab
@@ -119,3 +125,54 @@
           Password *: "{{ gitlab_root_pass }}"
         timeout: 60
       become: yes
+      when: not proj_folder.stat.exists
+    
+    - name: Copy dockerfile for custom gitlab-runner image
+      copy:
+        src: gitlab/gitlab-runner.dockerfile
+        dest: /var
+        remote_src: false
+      become: yes
+    
+    - ansible.builtin.import_tasks:
+        file: docker-install.yml
+      become: yes
+
+    - name: Build custom gitlab-runner image
+      shell: "docker build /var -f /var/gitlab-runner.dockerfile -t my-runner:latest"
+
+    - name: Run gitlab-runner container
+      community.docker.docker_container:
+        name: my-runner
+        image: my-runner:latest
+        state: started
+        volumes:
+          - /srv/gitlab-runner/config:/etc/gitlab-runner
+          - /var/run/docker.sock:/var/run/docker.sock
+      become: yes
+    
+    - name: Check if runner has already registered
+      ansible.builtin.stat:
+        path: /srv/gitlab-runner/config/config.toml
+      register: toml_conf
+
+    - name: Enter a token for project gitlab-runner
+      ansible.builtin.pause:
+        prompt: "Gitlab runner token (http://{{ hostvars['gitlab']['ansible_host'] }}/TTGFinder_group/TTGFinder/-/settings/ci_cd)"
+      register: runner_token
+      when: not toml_conf.stat.exists
+
+    - name: Register runner
+      ansible.builtin.expect:
+        command: "docker exec -ti my-runner gitlab-runner register"
+        responses:
+          Enter the GitLab instance URL: "http://{{ hostvars['gitlab']['ansible_host'] }}"
+          Enter the registration token: "{{ runner_token.user_input }}"
+          name for the runner: ""
+          Enter an executor: "shell"
+          description for the runner: ""
+          Enter tags for the runner: docker-runner
+          Enter optional maintenance note for the runner: ""
+      become: yes
+      when: not toml_conf.stat.exists
+
