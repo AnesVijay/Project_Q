@@ -151,7 +151,7 @@
           - /var/run/docker.sock:/var/run/docker.sock
       become: yes
     
-    - name: Check if runner has already registered
+    - name: Check if runner has already been registered
       ansible.builtin.stat:
         path: /srv/gitlab-runner/config/config.toml
       register: toml_conf
