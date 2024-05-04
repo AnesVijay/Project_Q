@@ -67,13 +67,25 @@ if [[ $needs_to_int_terraform == 'true' ]]
 then
     echo "############ Создаём виртуальную инфраструктуру с помощью Terraform"
     sed -i "/variable \"user\"/s/default = \".*\"/default = \"$remote_user\"/" variables.tf
-    echo '... Инициализируем провайдера Terraform'
+    echo 'Инициализируем провайдера Terraform'
     terraform init
     terraform plan -out plan
     terraform apply -auto-approve "plan"
-    echo "... Подождём инициализации виртуальных машин (20 секунд)"
-    sleep 20
+    echo "Подождём инициализации виртуальных машин (25 секунд)"
+    #sleep 25
+    echo -ne '[.....]\r'
+    sleep 5
+    echo -ne '[#....]\r'
+    sleep 5
+    echo -ne '[##...]\r'
+    sleep 5
+    echo -ne '[###..]\r'
+    sleep 5
+    echo -ne '[####.]\r'
+    sleep 5
+    echo -ne '[#####] (ready)\r\n'
 fi
+
 python python-ops/save_ips.py
 
 
