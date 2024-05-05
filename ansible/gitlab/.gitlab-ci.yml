@@ -20,7 +20,7 @@ build:
 deploy_stage:
   stage: deploy-stage
   script:
-    - sudo docker compose -f /var/TTGFinder/docker-compose.yml up -d
+    - sudo docker compose up -d
   tags:
     - prod-runner
   dependencies:

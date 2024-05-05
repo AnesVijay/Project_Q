@@ -105,8 +105,8 @@ ansible-playbook  ansible/gitlab_config.yml
 # echo "############ Сконфигурируем сервер имитации разработчиков"
 # ansible-playbook  ansible/coders_config.yml
 
-# echo "############ Сконфигурируем production сервер"
-# ansible-playbook  ansible/prod_config.yml
+echo "############ Сконфигурируем production сервер"
+ansible-playbook  ansible/prod_config.yml
 
-# echo "############ Сконфигурируем сервер мониторинга"
-# ansible-playbook  ansible/monitor_config.yml
+echo "############ Сконфигурируем сервер мониторинга"
+ansible-playbook  ansible/monitor_config.yml

@@ -48,8 +48,9 @@
         restart_policy: unless-stopped
         image: prom/prometheus:main
         etc_hosts:
-          gitlab.my: "{{ hostvars['gitlab']['ansible_host'] }}"
-          coders.docker: "{{ hostvars['coders']['ansible_host'] }}"
+          # gitlab.my: "{{ hostvars['gitlab']['ansible_host'] }}"
+          # coders.docker: "{{ hostvars['coders']['ansible_host'] }}"
+          prod.docker: "{{ hostvars['prod']['ansible_host'] }}"
         volumes:
           - /srv/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
           - /prometheus_main_data:/prometheus
@@ -82,32 +83,32 @@
 
 # ----------------- Loki ------------------ #
 
-    - name: Create folder /srv/loki if not exist
-      file:
-        path: /srv/loki
-        mode: 0777
-        state: directory
+    # - name: Create folder /srv/loki if not exist
+    #   file:
+    #     path: /srv/loki
+    #     mode: 0777
+    #     state: directory
 
-    - name: Copy my Loki config to server
-      copy:
-        src: "loki/loki-config.yml"
-        dest: "/srv/loki"
-        remote_src: false
+    # - name: Copy my Loki config to server
+    #   copy:
+    #     src: "loki/loki-config.yml"
+    #     dest: "/srv/loki"
+    #     remote_src: false
     
-    - name: Create Loki container
-      community.docker.docker_container:
-        name: loki
-        restart_policy: unless-stopped
-        image: grafana/loki:latest
-        etc_hosts:
-          # gitlab.my: "{{ hostvars['gitlab']['ansible_host'] }}"
-          # coders.docker: "{{ hostvars['coders']['ansible_host'] }}"
-        volumes:
-          - /srv/loki/loki-config.yml:/etc/loki/loki-config.yml
-          - /loki_main_data:/etc/loki
+    # - name: Create Loki container
+    #   community.docker.docker_container:
+    #     name: loki
+    #     restart_policy: unless-stopped
+    #     image: grafana/loki:latest
+    #     etc_hosts:
+    #       # gitlab.my: "{{ hostvars['gitlab']['ansible_host'] }}"
+    #       # coders.docker: "{{ hostvars['coders']['ansible_host'] }}"
+    #     volumes:
+    #       - /srv/loki/loki-config.yml:/etc/loki/loki-config.yml
+    #       - /loki_main_data:/etc/loki
         
-        command: >
-          -config.file=/etc/loki/loki-config.yml
-          -config.expand-env=true
-        published_ports: "3100:3100"
+    #     command: >
+    #       -config.file=/etc/loki/loki-config.yml
+    #       -config.expand-env=true
+    #     published_ports: "3100:3100"
     
