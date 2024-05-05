@@ -75,17 +75,17 @@ def make_change(path_to_file: Path):
             lines = f.readlines()
             if len(lines) > 1:
                 if "print(\"Hello\")" in lines[0]:
-                    date = datetime.today.strftime("%d %B, %Y")
+                    date = datetime.today().strftime("%d %B, %Y")
                     time = datetime.now().strftime("%H:%M:%S")
                     f.write("\n")
                     f.write(f"------------this change made on {date} at {time}\n=> by coder #{num}\n")
             else:
-                f.write("print (\"Hello World\")")
+                f.write("print (\"Hello World\")\n")
 
 
 def commit_push_changes(repo: git.Repo):
     print("commit_push")
-    repo.git.add(update=True)
+    repo.git.add(all=True)
     date = datetime.today().strftime("%d %B, %Y")
     time = datetime.now().strftime("%H:%M")
     repo.index.commit(f"Changes to {filename} on {date} at {time}")

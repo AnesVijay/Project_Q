@@ -1,5 +1,5 @@
 - name: Configuring Prometheus
-  hosts: prometheus
+  hosts: monitor
   become: yes
 
   tasks:
@@ -12,49 +12,103 @@
     - ansible.builtin.import_tasks:
         file: docker-install.yml
 
+# ----------------- Prometheus ------------------ #
+
     - name: Create folder /srv/prometheus if not exist
       file:
         path: /srv/prometheus
-        mode: 0755
+        mode: 0777
         state: directory
 
-    - name: Copy my config to server
+    - name: Copy my Prometheus config to server
       copy:
         src: "prometheus/prometheus.yml"
         dest: "/srv/prometheus"
         remote_src: false
 
-    - name: Copy Dockerfile to Prometheus server
-      copy:
-        src: "prometheus/Dockerfile.prometheus"
-        dest: "/srv/prometheus"
-        remote_src: false
+    # - name: Copy Dockerfile to Prometheus server
+    #   copy:
+    #     src: "prometheus/Dockerfile.prometheus"
+    #     dest: "/srv/prometheus"
+    #     remote_src: false
 
-    - name: Build custom Prometheus image
-      docker_image:
-        build:
-          dockerfile: /srv/prometheus/Dockerfile.prometheus
-          path: /srv/prometheus
-        source: build
-        name: my-prom-image
-        tag: latest
-        state: present
+    # - name: Build custom Prometheus image
+    #   docker_image:
+    #     build:
+    #       dockerfile: /srv/prometheus/Dockerfile.prometheus
+    #       path: /srv/prometheus
+    #     source: build
+    #     name: my-prom-image
+    #     tag: latest
+    #     state: present
 
     - name: Create Prometheus container
       community.docker.docker_container:
         name: prometheus
-        restart_policy: always
-        image: prom/prometheus:latest
+        restart_policy: unless-stopped
+        image: prom/prometheus:main
         etc_hosts:
-          gitlab.my: "{{ hostvars['gitlab']['ansible_host'] }}"
-          coders.docker: "{{ hostvars['coders']['ansible_host'] }}"
+          # gitlab.my: "{{ hostvars['gitlab']['ansible_host'] }}"
+          # coders.docker: "{{ hostvars['coders']['ansible_host'] }}"
+          prod.docker: "{{ hostvars['prod']['ansible_host'] }}"
         volumes:
           - /srv/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-          - prometheus_main_data:/prometheus
+          - /prometheus_main_data:/prometheus
         command: >
           --config.file=/etc/prometheus/prometheus.yml
           --storage.tsdb.path=/prometheus
           --web.console.libraries=/etc/prometheus/console_libraries
           --web.console.templates=/etc/prometheus/consoles
           --web.enable-lifecycle
+        user: "root"
         published_ports: "9999:9090"
+
+# ----------------- Grafana ------------------ #
+
+    - name: Create Grafana container
+      community.docker.docker_container:
+        name: grafana
+        restart_policy: unless-stopped
+        image: grafana/grafana:latest
+        etc_hosts:
+          monitor.my: "{{ hostvars['monitor']['ansible_host'] }}"
+        volumes:
+          - /grafana_main_data:/var/lib/grafana
+        user: "0"
+        published_ports: "3000:3000"
+    
+    # - name: Now you need to connect Prometheus to Grafana manually
+    #   ansible.builtin.wait_for:
+    #     timeout: 15
+
+# ----------------- Loki ------------------ #
+
+    # - name: Create folder /srv/loki if not exist
+    #   file:
+    #     path: /srv/loki
+    #     mode: 0777
+    #     state: directory
+
+    # - name: Copy my Loki config to server
+    #   copy:
+    #     src: "loki/loki-config.yml"
+    #     dest: "/srv/loki"
+    #     remote_src: false
+    
+    # - name: Create Loki container
+    #   community.docker.docker_container:
+    #     name: loki
+    #     restart_policy: unless-stopped
+    #     image: grafana/loki:latest
+    #     etc_hosts:
+    #       # gitlab.my: "{{ hostvars['gitlab']['ansible_host'] }}"
+    #       # coders.docker: "{{ hostvars['coders']['ansible_host'] }}"
+    #     volumes:
+    #       - /srv/loki/loki-config.yml:/etc/loki/loki-config.yml
+    #       - /loki_main_data:/etc/loki
+        
+    #     command: >
+    #       -config.file=/etc/loki/loki-config.yml
+    #       -config.expand-env=true
+    #     published_ports: "3100:3100"
+    

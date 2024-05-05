@@ -1,0 +1,85 @@
+- name: Production server configuration
+  hosts: prod
+  become: yes
+
+  vars_files:
+    - vars.yml
+  
+  tasks:
+
+    - ansible.builtin.import_tasks:
+        file: docker-install.yml
+
+    - name: Pull cAdvisor image
+      community.docker.docker_image:
+        name: gcr.io/cadvisor/cadvisor:v0.49.1
+        source: pull
+
+    - name: Running cAdvisor container to export docker metrics to Prometheus
+      community.docker.docker_container:
+        name: cadvisor
+        restart_policy: always
+        image: gcr.io/cadvisor/cadvisor:v0.49.1
+        detach: true
+        published_ports:
+          - 8080:8080
+        volumes:
+          - /:/rootfs:ro
+          - /var/run:/var/run:ro
+          - /sys:/sys:ro
+          - /var/lib/docker/:/var/lib/docker:ro
+          - /dev/disk/:/dev/disk:ro
+        state: started
+
+    - name: Copy gitlab runner installation script
+      copy:
+        src: prod/runner-installer.sh
+        dest: /srv
+        mode: +x
+        remote_src: false
+
+    - name: Install gitlab runner by script
+      shell: /srv/runner-installer.sh
+    
+    - name: Add gitlab-runner user to sudoers
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        insertafter: EOF
+        line: "gitlab-runner ALL=(ALL) NOPASSWD: ALL"
+        state: present
+
+    - name: Check if runner has already been registered
+      ansible.builtin.stat:
+        path: /etc/gitlab-runner/config_done
+      register: config_done
+
+    - name: Troubleshoot error with shell profile loading
+      shell: "sed -i 's/{{ item }}/#{{ item }}/' /home/gitlab-runner/.bash_logout"
+      with_items:
+        - if \[ \"$SHLVL\" = 1 \]; then
+        - \[ -x \/usr\/bin\/clear_console \] && \/usr\/bin\/clear_console -q
+        - "fi"
+
+    - name: Get registration token for gitlab-runner (with tag "prod-runner")
+      ansible.builtin.pause:
+        prompt: "Gitlab runner token (http://{{ hostvars['gitlab']['ansible_host'] }}/{{ group_name }}/{{ proj_name }}/-/settings/ci_cd)"
+      register: prod_runner_token
+      when: not config_done.stat.exists
+
+    - name: Register runner
+      ansible.builtin.expect:
+        command: "gitlab-runner register"
+        responses:
+          Enter the GitLab instance URL: "http://{{ hostvars['gitlab']['ansible_host'] }}"
+          Enter the registration token: "{{ prod_runner_token.user_input }}"
+          name for the runner: ""
+          Enter an executor: "shell"
+          description for the runner: ""
+          Enter tags for the runner: prod-runner
+          Enter optional maintenance note for the runner: ""
+      when: not config_done.stat.exists
+
+    - name: Flag that runner is configured
+      file:
+        path: /etc/gitlab-runner/config_done
+        state: touch

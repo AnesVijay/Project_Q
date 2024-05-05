@@ -5,7 +5,7 @@
     - vars.yml
 
   tasks:
-        
+
     - name: Install packages
       apt:
         pkg:
@@ -22,23 +22,26 @@
       shell: curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | bash
       become: yes
 
-    - name: Wait 30 seconds after adding gitlab package
+    - name: Wait 10 seconds after adding gitlab package
       wait_for:
-        timeout: 30
+        timeout: 10
 
     - name: Install Gitlab package
       apt:
-        pkg:
-          - gitlab-ce
+        name: gitlab-ce
+        state: present
         update_cache: yes
       environment:
         EXTERNAL_URL: "http://{{ ansible_ssh_host }}"
         GITLAB_ROOT_PASSWORD: "{{ gitlab_root_pass }}"
       become: yes
 
-    - name: Wait a minute for Gitlab boot
-      wait_for:
-        timeout: 60
+    - name: Wait for a Gitlab boot
+      shell: gitlab-ctl status
+      register: shell_res
+      delay: 30
+      until: shell_res.stdout_lines | reject('search','^run') | list | count == 0
+      become: yes
 
     - name: Install pip module 'gitlab'
       pip:
@@ -53,8 +56,8 @@
         api_password: "{{ gitlab_root_pass }}"
         name: "{{ group_name }}"
         path: "{{ group_name }}"
+        visibility: public
         state: present
-      register: gitlab_group
 
     - name: Create Gitlab project in created group
       community.general.gitlab_project:
@@ -66,50 +69,114 @@
         group: "{{ group_name }}"
         issues_enabled: false
         snippets_enabled: true
-        initialize_with_readme: true
-        default_branch: main
+        initialize_with_readme: false
+        visibility: public
         state: present
-    
-    - name: Check if config backup exists
-      stat:
-        path: /etc/gitlab/gitlab.rb.backup
-      register: backup_result
-    
-    - name: Copy previous config file for backup
-      ansible.builtin.copy:
-        src: /etc/gitlab/gitlab.rb
-        dest: /etc/gitlab/gitlab.rb.backup
-        remote_src: yes
+
+    - name: Check if repo is already exist
+      ansible.builtin.stat:
+        path: /var/TTGFinder
+      register: proj_folder
+
+    - name: Clone a repo from GitHub
+      ansible.builtin.git:
+        repo: https://github.com/ATAS-Digital/TTGFinder.git
+        dest: /var/TTGFinder
       become: yes
-      when: not backup_result.stat.exists
-    
-    - name: Config Gitlab for external Prometheus
-      ansible.builtin.lineinfile:
-        path: /etc/gitlab/gitlab.rb
-        insertbefore: BOF
-        line: |
-            prometheus['enable'] = false
-            node_exporter['listen_address'] = '0.0.0.0:9100'
-            gitlab_workhorse['prometheus_listen_addr'] = "0.0.0.0:9229"
-            gitlab_exporter['listen_address'] = '0.0.0.0'
-            gitlab_exporter['listen_port'] = '9168'
-            registry['debug_addr'] = '0.0.0.0:5001'
-            sidekiq['listen_address'] = '0.0.0.0'
-            redis_exporter['listen_address'] = '0.0.0.0:9121'
-            postgres_exporter['listen_address'] = '0.0.0.0:9187'
-            gitaly['configuration'] = {
-              prometheus_listen_addr: '0.0.0.0:9236',
-            }
-            gitlab_rails['prometheus_address'] = '{{ hostvars['prometheus']['ansible_host'] }}:9999'
-            nginx['status']['options'] = {
-             "server_tokens" => "off",
-             "access_log" => "off",
-             "allow" => ["{{ hostvars["prometheus"]["ansible_host"] }}"],
-             "deny" => "all",
-            }
-            gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8', '{{ hostvars['prometheus']['ansible_host'] }}']
+      when: not proj_folder.stat.exists
+
+    - name: Copy bash scripts to repo
+      copy:
+        src: "gitlab/{{ item }}"
+        dest: /var
+        mode: +x
+        remote_src: false
+      with_items:
+        - "git-prepare.sh"
+        - "ch-dir.sh"
+        - "build-maven-project.sh"
+      become: yes
+
+    - name: Add docker files to repo
+      copy:
+        src: "gitlab/{{ item }}"
+        dest: /var/TTGFinder
+        remote_src: false
+      with_items:
+        - docker-compose.yml
+        - Dockerfile
       become: yes
     
-    - name: Recofigure Gitlab
-      shell: gitlab-ctl reconfigure
-      become: true
+    - name: Copy nginx config to repo
+      copy:
+        src: gitlab/nginx
+        dest: /var/TTGFinder
+        remote_src: false
+      become: yes
+    
+    - name: Copy gitlab pipline file to repo
+      copy:
+        src: gitlab/.gitlab-ci.yml
+        dest: /var/TTGFinder
+        remote_src: false
+      become: yes
+
+    - name: Push repo to Gitlab
+      expect:
+        command: "/var/git-prepare.sh -link http://{{ ansible_ssh_host }}/{{ group_name }}/{{ proj_name }}.git"
+        chdir: /var
+        responses:
+          Username *: "root"
+          Password *: "{{ gitlab_root_pass }}"
+        timeout: 60
+      become: yes
+      when: not proj_folder.stat.exists
+    
+    - name: Copy dockerfile for custom gitlab-runner image
+      copy:
+        src: gitlab/gitlab-runner.dockerfile
+        dest: /var
+        remote_src: false
+      become: yes
+    
+    - ansible.builtin.import_tasks:
+        file: docker-install.yml
+      become: yes
+
+    - name: Build custom gitlab-runner image
+      shell: "docker build /var -f /var/gitlab-runner.dockerfile -t my-runner:latest"
+
+    - name: Run gitlab-runner container
+      community.docker.docker_container:
+        name: my-runner
+        image: my-runner:latest
+        state: started
+        volumes:
+          - /srv/gitlab-runner/config:/etc/gitlab-runner
+          - /var/run/docker.sock:/var/run/docker.sock
+      become: yes
+    
+    - name: Check if runner has already been registered
+      ansible.builtin.stat:
+        path: /srv/gitlab-runner/config/config.toml
+      register: toml_conf
+
+    - name: Enter a token for project gitlab-runner (with tag "docker-runner")
+      ansible.builtin.pause:
+        prompt: "Gitlab runner token (http://{{ hostvars['gitlab']['ansible_host'] }}/{{ group_name }}/{{ proj_name }}/-/settings/ci_cd)"
+      register: runner_token
+      when: not toml_conf.stat.exists
+
+    - name: Register runner
+      ansible.builtin.expect:
+        command: "docker exec -ti my-runner gitlab-runner register"
+        responses:
+          Enter the GitLab instance URL: "http://{{ hostvars['gitlab']['ansible_host'] }}"
+          Enter the registration token: "{{ runner_token.user_input }}"
+          name for the runner: ""
+          Enter an executor: "shell"
+          description for the runner: ""
+          Enter tags for the runner: docker-runner
+          Enter optional maintenance note for the runner: ""
+      become: yes
+      when: not toml_conf.stat.exists
