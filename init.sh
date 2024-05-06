@@ -75,15 +75,15 @@ then
     #sleep 25
     echo -ne '[.....]\r'
     sleep 5
-    echo -ne '[#....]\r'
+    echo -ne '[=....]\r'
     sleep 5
-    echo -ne '[##...]\r'
+    echo -ne '[==...]\r'
     sleep 5
-    echo -ne '[###..]\r'
+    echo -ne '[===..]\r'
     sleep 5
-    echo -ne '[####.]\r'
+    echo -ne '[====.]\r'
     sleep 5
-    echo -ne '[#####] (ready)\r\n'
+    echo -ne '[=====] (ready)\r\n'
 fi
 
 python python-ops/save_ips.py
