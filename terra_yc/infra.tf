@@ -69,9 +69,9 @@ resource "yandex_compute_instance" "monitor" {
   zone        = var.zone
 
   resources {
-    core_fraction = 20
+    core_fraction = 5
     cores  = 2
-    memory = 2
+    memory = 1
   }
 
   boot_disk {
@@ -97,9 +97,9 @@ resource "yandex_compute_instance" "prod" {
   zone        = var.zone
 
   resources {
-    core_fraction = 5
+    core_fraction = 20
     cores  = 2
-    memory = 1
+    memory = 2
   }
 
   boot_disk {
