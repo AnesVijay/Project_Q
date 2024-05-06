@@ -30,6 +30,14 @@
           - /var/lib/docker/:/var/lib/docker:ro
           - /dev/disk/:/dev/disk:ro
         state: started
+    
+    # - name: Prepare folder for pgadmin4 container
+    #   file:
+    #     path: /pgadmin-data
+    #     owner: 5050
+    #     group: 5050
+    #     state: directory
+    #     recurse: yes
 
     - name: Copy gitlab runner installation script
       copy:
