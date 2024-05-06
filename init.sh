@@ -28,9 +28,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     -h | --help | *)
       echo "Введите флаг -p/--password с указанием пароля, который будет задан аккаунту администратора сервера GitLab"
-      echo "Введите флаг -u/--remote-user с указанием имени пользователя, которое используется на удалённой ВМ"
-      echo "Флаг -ti/--terraform-init позволит произвести инициализацию провайдера Terraform"
-      echo "Флаг -cp/--config-python позволит произвести инициализацию локального окружения Python и установит необходимые библиотеки"
+      echo "Введите флаг -u/--remote-user с указанием имени пользователя, которое используется на удалённых ВМ"
+      echo "Флаг -ti/--terraform-init позволит произвести инициализацию провайдера Terraform и развернёт виртуальные машины"
+      echo "Флаг -cp/--config-python позволит произвести инициализацию локального окружения Python и установит необходимые библиотеки (нужно для запуска и работы Ansible и других скриптов)"
       exit 1
       ;;
   esac
@@ -50,17 +50,27 @@ fi
 
 source chdir.sh
 
+
 if [[ -n $password ]] 
 then
   sed -i 's/gitlab_root_pass: .*/gitlab_root_pass: /g' ansible/vars.yml
   sed -i -e "s/gitlab_root_pass: */gitlab_root_pass: $password/" ansible/vars.yml
 fi
 
+
 if [[ -n $remote_user ]] 
 then
   sed -i 's/ansible_user=.*/ansible_user=/g' ansible/hosts.ini
   sed -i -e "s/ansible_user=*/ansible_user=$remote_user/" ansible/hosts.ini
 fi
+
+
+if [[ $needs_to_config_python == 'yes' ]]
+then
+    echo "############ Конфигурируем локальное виртуальное окружение python для работы с ansible"
+. ./configure-python.sh
+fi
+
 
 cd_terraform
 if [[ $needs_to_int_terraform == 'true' ]]
@@ -90,13 +100,6 @@ python python-ops/save_ips.py
 
 
 cd_root
-
-
-if [[ $needs_to_config_python == 'yes' ]]
-then
-    echo "############ Конфигурируем локальное виртуальное окружение python для работы с ansible"
-. ./configure-python.sh
-fi
 
 
 echo "############ Сконфигурируем сервер GitLab"
