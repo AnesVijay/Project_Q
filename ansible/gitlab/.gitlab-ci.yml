@@ -1,7 +1,6 @@
 stages:
     - build
     - deploy-stage
-    - load_testing
 
 build:
   stage: build
@@ -25,12 +24,3 @@ deploy_stage:
     - prod-runner
   dependencies:
     - "build"
-
-# load_testing:
-#   stage: load_testing
-#   script:
-#     - docker compose -f /var/TTGFinder/docker-compose.yml up -d
-#     - echo "..."
-#   when: manual
-#   tags:
-#     - prod-runner

@@ -1,5 +1,6 @@
 - name: Gitlab configuration
   hosts: gitlab
+  become: yes
 
   vars_files:
     - vars.yml
@@ -16,32 +17,31 @@
           - perl
           - python3-pip
         update_cache: yes
-      become: yes
+      
 
     - name: Add Gitlab package repository
       shell: curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | bash
-      become: yes
+      
 
     - name: Wait 10 seconds after adding gitlab package
       wait_for:
         timeout: 10
 
     - name: Install Gitlab package
-      apt:
-        name: gitlab-ce
-        state: present
-        update_cache: yes
+      shell: apt install -y gitlab-ce
+      # apt:
+      #   name: gitlab-ce
       environment:
         EXTERNAL_URL: "http://{{ ansible_ssh_host }}"
         GITLAB_ROOT_PASSWORD: "{{ gitlab_root_pass }}"
-      become: yes
+      
 
     - name: Wait for a Gitlab boot
       shell: gitlab-ctl status
       register: shell_res
       delay: 30
       until: shell_res.stdout_lines | reject('search','^run') | list | count == 0
-      become: yes
+      
 
     - name: Install pip module 'gitlab'
       pip:
@@ -82,7 +82,7 @@
       ansible.builtin.git:
         repo: https://github.com/ATAS-Digital/TTGFinder.git
         dest: /var/TTGFinder
-      become: yes
+      
       when: not proj_folder.stat.exists
 
     - name: Copy bash scripts to repo
@@ -95,7 +95,7 @@
         - "git-prepare.sh"
         - "ch-dir.sh"
         - "build-maven-project.sh"
-      become: yes
+      
 
     - name: Add docker files to repo
       copy:
@@ -105,21 +105,21 @@
       with_items:
         - docker-compose.yml
         - Dockerfile
-      become: yes
+      
     
     - name: Copy nginx config to repo
       copy:
         src: gitlab/nginx
         dest: /var/TTGFinder
         remote_src: false
-      become: yes
+      
     
     - name: Copy gitlab pipline file to repo
       copy:
         src: gitlab/.gitlab-ci.yml
         dest: /var/TTGFinder
         remote_src: false
-      become: yes
+      
 
     - name: Push repo to Gitlab
       expect:
@@ -129,7 +129,7 @@
           Username *: "root"
           Password *: "{{ gitlab_root_pass }}"
         timeout: 60
-      become: yes
+      
       when: not proj_folder.stat.exists
     
     - name: Copy dockerfile for custom gitlab-runner image
@@ -137,11 +137,11 @@
         src: gitlab/gitlab-runner.dockerfile
         dest: /var
         remote_src: false
-      become: yes
+      
     
     - ansible.builtin.import_tasks:
         file: docker-install.yml
-      become: yes
+      
 
     - name: Build custom gitlab-runner image
       shell: "docker build /var -f /var/gitlab-runner.dockerfile -t my-runner:latest"
@@ -154,7 +154,7 @@
         volumes:
           - /srv/gitlab-runner/config:/etc/gitlab-runner
           - /var/run/docker.sock:/var/run/docker.sock
-      become: yes
+      
     
     - name: Check if runner has already been registered
       ansible.builtin.stat:
@@ -178,5 +178,5 @@
           description for the runner: ""
           Enter tags for the runner: docker-runner
           Enter optional maintenance note for the runner: ""
-      become: yes
+      
       when: not toml_conf.stat.exists
