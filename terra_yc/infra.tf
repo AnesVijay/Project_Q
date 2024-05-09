@@ -134,6 +134,6 @@ output "monitor-server-ip" {
   value = yandex_compute_instance.monitor.network_interface.0.nat_ip_address
 }
 
-output "production-server-ip" {
+output "prod-server-ip" {
   value = yandex_compute_instance.prod.network_interface.0.nat_ip_address
 }
