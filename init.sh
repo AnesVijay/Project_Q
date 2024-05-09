@@ -23,14 +23,10 @@ while [[ $# -gt 0 ]]; do
         exit 1
       fi
       ;;
-    -cp | --config-python)
-        needs_to_config_python='yes'
-      ;;
     -h | --help | *)
       echo "Введите флаг -p/--password с указанием пароля, который будет задан аккаунту администратора сервера GitLab"
       echo "Введите флаг -u/--remote-user с указанием имени пользователя, которое используется на удалённых ВМ"
       echo "Флаг -ti/--terraform-init позволит произвести инициализацию провайдера Terraform и развернёт виртуальные машины"
-      echo "Флаг -cp/--config-python позволит произвести инициализацию локального окружения Python и установит необходимые библиотеки (нужно для запуска и работы Ansible и других скриптов)"
       exit 1
       ;;
   esac
@@ -65,16 +61,10 @@ then
 fi
 
 
-if [[ $needs_to_config_python == 'yes' ]]
-then
-    echo "############ Конфигурируем локальное виртуальное окружение python для работы с ansible"
-. ./configure-python.sh
-fi
-
-
-cd_terraform
 if [[ $needs_to_int_terraform == 'true' ]]
 then
+    cd_terraform
+    
     echo "############ Создаём виртуальную инфраструктуру с помощью Terraform"
     sed -i "/variable \"user\"/s/default = \".*\"/default = \"$remote_user\"/" variables.tf
     echo 'Инициализируем провайдера Terraform'
@@ -93,13 +83,19 @@ then
     sleep 5
     echo -ne '[====.]\r'
     sleep 5
-    echo -ne '[=====] (ready)\r\n'
+    echo -e '[=====] (ready)\r\n'
+    
+    \../venv/bin/python python-ops/save_ips.py
 fi
-
-python python-ops/save_ips.py
 
 
 cd_root
+
+
+if [ ! -d "./venv" ]; then
+  echo "Нужно сконфигурировать локальное окружение Python для дальнейшего использования Ansible"
+  echo "Создать его можно, запустив вручную скрипт: \`sudo ./configure-python.sh\`"
+fi
 
 
 echo "############ Сконфигурируем сервер GitLab"
