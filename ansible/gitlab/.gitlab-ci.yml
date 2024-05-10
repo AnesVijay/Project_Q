@@ -19,7 +19,8 @@ build:
 deploy_stage:
   stage: deploy-stage
   script:
-    - sudo docker compose up -d
+    - sudo docker-compose up --force-recreate --build -d
+    - sudo docker image prune -f
   tags:
     - prod-runner
   dependencies:
