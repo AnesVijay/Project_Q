@@ -58,6 +58,9 @@ if [[ -n $remote_user ]]
 then
   sed -i 's/ansible_user=.*/ansible_user=/g' ansible/hosts.ini
   sed -i -e "s/ansible_user=*/ansible_user=$remote_user/" ansible/hosts.ini
+  
+  sed -i 's/  - name:.*/  - name:/g' terra_yc/vm-ssh-init.yml
+  sed -i -e "s/  - name:*/  - name: $remote_user/" terra_yc/vm-ssh-init.yml
 fi
 
 

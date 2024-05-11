@@ -60,5 +60,6 @@
         published_ports: "3000:3000"
     
     - name: Now you need to connect Prometheus to Grafana manually
-      ansible.builtin.wait_for:
-        timeout: 15
+      ansible.builtin.pause:
+        prompt: "Grafana on monitoring server is available here: http://{{ hostvars['monitor']['ansible_host'] }}:3000"
+        seconds: 15

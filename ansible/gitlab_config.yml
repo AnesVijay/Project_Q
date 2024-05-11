@@ -178,5 +178,4 @@
           description for the runner: ""
           Enter tags for the runner: docker-runner
           Enter optional maintenance note for the runner: ""
-      
       when: not toml_conf.stat.exists
