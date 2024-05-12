@@ -40,8 +40,9 @@
       shell: gitlab-ctl status
       register: shell_res
       delay: 30
+      retries: 10
       until: shell_res.stdout_lines | reject('search','^run') | list | count == 0
-      
+
 
     - name: Install pip module 'gitlab'
       pip:
@@ -126,8 +127,8 @@
         command: "/var/git-prepare.sh -link http://{{ ansible_ssh_host }}/{{ group_name }}/{{ proj_name }}.git"
         chdir: /var
         responses:
-          Username *: "root"
-          Password *: "{{ gitlab_root_pass }}"
+          Username: "root"
+          Password: "{{ gitlab_root_pass }}"
         timeout: 60
       
       when: not proj_folder.stat.exists
@@ -179,3 +180,4 @@
           Enter tags for the runner: docker-runner
           Enter optional maintenance note for the runner: ""
       when: not toml_conf.stat.exists
+      timeout: 60
