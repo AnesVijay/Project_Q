@@ -98,6 +98,25 @@ cd_root
 if [ ! -d "./venv" ]; then
   echo "Нужно сконфигурировать локальное окружение Python для дальнейшего использования Ansible"
   echo "Создать его можно, запустив вручную скрипт: \`sudo ./configure-python.sh\`"
+  exit 1
+fi
+
+if [ -n "$VIRTUAL_ENV" ]; then
+  local_env="$PWD/venv"
+  if [[ "$VIRTUAL_ENV" == "$local_env" ]]
+  then
+    echo "Окружение Python создано и активировано"
+    exit 1
+  fi
+else
+  echo "Виртуальное окружение создано, но не активировано"
+  echo "Активация виртуального окружения..."
+  source "venv/bin/activate"
+  if [[ "$VIRTUAL_ENV" == "$local_env" ]]
+  then
+    echo "Окружение Python создано и активировано"
+    exit 1
+  fi
 fi
 
 

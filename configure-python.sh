@@ -11,7 +11,7 @@ apt install python3.10 python3.10-venv -y > /bin/null && \
 echo "Создание окружения в папке venv" && \
 python3.10 -m venv venv > /bin/null
 
-source venv/bin/activate
+source "venv/bin/activate"
 
 # echo "Обновление pip"
 # ./venv/bin/pip install --upgrade pip
