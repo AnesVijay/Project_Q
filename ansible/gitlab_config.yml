@@ -34,6 +34,7 @@
       environment:
         EXTERNAL_URL: "http://{{ ansible_ssh_host }}"
         GITLAB_ROOT_PASSWORD: "{{ gitlab_root_pass }}"
+      timeout: 900
       
 
     - name: Wait for a Gitlab boot
@@ -164,7 +165,7 @@
 
     - name: Enter a token for project gitlab-runner (with tag "docker-runner")
       ansible.builtin.pause:
-        prompt: "Gitlab runner token (http://{{ hostvars['gitlab']['ansible_host'] }}/{{ group_name }}/{{ proj_name }}/-/settings/ci_cd)"
+        prompt: "Gitlab runner token (http://{{ hostvars['gitlab']['ansible_host'] }}/{{ group_name }}/{{ proj_name }}/-/settings/ci_cd#js-runners-settings)"
       register: runner_token
       when: not toml_conf.stat.exists
 
