@@ -3,3 +3,4 @@ proj_name: TTGFinder
 group_name: "{{ proj_name }}_group"
 
 gitlab_admin_pat: <admin_personal_access_token>
+proj_id: <project_id>
