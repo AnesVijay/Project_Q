@@ -17,11 +17,9 @@
           - perl
           - python3-pip
         update_cache: yes
-      
 
     - name: Add Gitlab package repository
       shell: curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | bash
-      
 
     - name: Wait 10 seconds after adding gitlab package
       wait_for:
@@ -74,6 +72,30 @@
         initialize_with_readme: false
         visibility: public
         state: present
+      register: proj_info
+
+    - name: Add admin Personal Access Token with scope 'create_runner'
+      pause:
+        prompt: "The link to it \"http://{{ ansible_ssh_host }}/-/user_settings/personal_access_tokens\""
+      register: pat
+      when: gitlab_admin_pat != "" 
+    
+    - ansible.builtin.set_fact:
+        admin_pat: '{{ pat["user_input"] }}'
+        proj_id: "{{ proj_info['project']['id'] }}"
+
+    - name: Curl to Gitlab
+      shell: |
+        curl --silent --request POST --url "http://{{ ansible_ssh_host }}/api/v4/user/runners" \
+        --data "runner_type=project_type" \
+        --data "project_id={{ proj_id }}" \
+        --data "description=Runner for building" \
+        --data "tag_list=docker-runner" \
+        --header "PRIVATE-TOKEN: {{ admin_pat }}"
+      register: runner_info
+    
+    - ansible.builtin.set_fact:
+        runner_token: "{{ runner_info[\"stdout_lines\"][0].split(\",\")[1].split(\":\")[1] }}"
 
     - name: Check if repo is already exist
       ansible.builtin.stat:
@@ -131,7 +153,6 @@
           Username: "root"
           Password: "{{ gitlab_root_pass }}"
         timeout: 60
-      
       when: not proj_folder.stat.exists
     
     - name: Copy dockerfile for custom gitlab-runner image
@@ -163,18 +184,12 @@
         path: /srv/gitlab-runner/config/config.toml
       register: toml_conf
 
-    - name: Enter a token for project gitlab-runner (with tag "docker-runner")
-      ansible.builtin.pause:
-        prompt: "Gitlab runner token (http://{{ hostvars['gitlab']['ansible_host'] }}/{{ group_name }}/{{ proj_name }}/-/settings/ci_cd#js-runners-settings)"
-      register: runner_token
-      when: not toml_conf.stat.exists
-
     - name: Register runner
       ansible.builtin.expect:
         command: "docker exec -ti my-runner gitlab-runner register"
         responses:
           Enter the GitLab instance URL: "http://{{ hostvars['gitlab']['ansible_host'] }}"
-          Enter the registration token: "{{ runner_token.user_input }}"
+          Enter the registration token: "{{ runner_token[1:-1] }}"
           name for the runner: ""
           Enter an executor: "shell"
           description for the runner: ""
@@ -182,3 +197,26 @@
           Enter optional maintenance note for the runner: ""
       when: not toml_conf.stat.exists
       timeout: 60
+
+# ---------------------- Configuring GitLab for sharing metrics ---------------------- #
+
+    - name: Add Prometheus address to whitelist in Gitlab config
+      ansible.builtin.lineinfile:
+        path: /etc/gitlab/gitlab.rb
+        insertbefore: BOF
+        line: "gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8', '{{ hostvars['monitor']['ansible_host'] }}']"
+    
+    - name: Recofigure Gitlab to accept whitelist changes
+      shell: gitlab-ctl reconfigure
+
+- name: Save created variables to vars
+  hosts: localhost
+  tasks:
+    - ansible.builtin.lineinfile:
+        path: vars.yml
+        regexp: "gitlab_admin_pat:"
+        line: "gitlab_admin_pat: {{ hostvars['gitlab']['admin_pat'] }}"
+    - ansible.builtin.lineinfile:
+        path: vars.yml
+        regexp: "proj_id:"
+        line: "proj_id: {{ hostvars['gitlab']['proj_id'] }}"

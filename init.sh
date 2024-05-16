@@ -89,6 +89,10 @@ then
     echo -e '[=====] (ready)\r\n'
     
     \../venv/bin/python python-ops/save_ips.py
+
+    # очистим старые данные
+    sed -i 's/gitlab_admin_pat: .*/gitlab_admin_pat:/g' ansible/vars.yml
+    sed -i 's/proj_id: .*/proj_id:/g' ansible/vars.yml
 fi
 
 

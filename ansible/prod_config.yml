@@ -68,18 +68,25 @@
         - \[ -x \/usr\/bin\/clear_console \] && \/usr\/bin\/clear_console -q
         - "fi"
 
-    - name: Get registration token for gitlab-runner (with tag "prod-runner")
-      ansible.builtin.pause:
-        prompt: "Gitlab runner token (http://{{ hostvars['gitlab']['ansible_host'] }}/{{ group_name }}/{{ proj_name }}/-/settings/ci_cd#js-runners-settings)"
-      register: prod_runner_token
-      when: not config_done.stat.exists
+    - name: Curl to Gitlab (get registration token)
+      shell: |
+        curl --silent --request POST --url "http://{{ hostvars['gitlab']['ansible_host'] }}/api/v4/user/runners" \
+        --data "runner_type=project_type" \
+        --data "project_id={{ proj_id }}" \
+        --data "description=Runner for deploy" \
+        --data "tag_list=prod-runner" \
+        --header "PRIVATE-TOKEN: {{ gitlab_admin_pat }}"
+      register: runner_info
+    
+    - ansible.builtin.set_fact:
+        runner_token: "{{ runner_info[\"stdout_lines\"][0].split(\",\")[1].split(\":\")[1] }}"
 
     - name: Register runner
       ansible.builtin.expect:
         command: "gitlab-runner register"
         responses:
           Enter the GitLab instance URL: "http://{{ hostvars['gitlab']['ansible_host'] }}"
-          Enter the registration token: "{{ prod_runner_token.user_input }}"
+          Enter the registration token: "{{ runner_token[1:-1] }}"
           name for the runner: ""
           Enter an executor: "shell"
           description for the runner: ""
