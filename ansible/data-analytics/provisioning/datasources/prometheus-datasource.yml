@@ -1,0 +1,7 @@
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    url: http://monitor.my:9999
+    access: proxy
+    isDefault: true

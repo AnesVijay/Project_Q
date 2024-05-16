@@ -2,6 +2,9 @@
   hosts: monitor
   become: yes
 
+  vars_files:
+    - vars.yml
+
   tasks:
 
     - name: Install packages
@@ -47,6 +50,12 @@
 
 # ----------------- Grafana ------------------ #
 
+    - name: Copy Grafana files to server
+      ansible.builtin.copy:
+        src: "./data-analytics/provisioning"
+        dest: /grafana-provisioning
+        remote_src: false
+
     - name: Create Grafana container
       community.docker.docker_container:
         name: grafana
@@ -56,9 +65,16 @@
           monitor.my: "{{ hostvars['monitor']['ansible_host'] }}"
         volumes:
           - /grafana_main_data:/var/lib/grafana
+          - /grafana-provisioning:/etc/grafana/provisioning
         user: "0"
         published_ports: "3000:3000"
     
+    - name: Config Grafana to use preset dashboard and datasource
+      shell: docker exec -ti grafana sed -i 's/;provisioning =.*/provisioning = \/etc\/grafana\/provisioning/' /etc/grafana/grafana.ini
+    
+    - name: Restart Grafana container
+      shell: docker restart grafana
+
     - name: Now you need to connect Prometheus to Grafana manually
       ansible.builtin.pause:
         prompt: "Grafana on monitoring server is available here: http://{{ hostvars['monitor']['ansible_host'] }}:3000"
