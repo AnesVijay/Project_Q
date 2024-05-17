@@ -4,4 +4,6 @@ datasources:
     type: prometheus
     url: http://monitor.my:9999
     access: proxy
+    orgId: 1
     isDefault: true
+    uid: prometheusdatasource
