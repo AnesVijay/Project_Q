@@ -198,17 +198,6 @@
       when: not toml_conf.stat.exists
       timeout: 60
 
-# ---------------------- Configuring GitLab for sharing metrics ---------------------- #
-
-    - name: Add Prometheus address to whitelist in Gitlab config
-      ansible.builtin.lineinfile:
-        path: /etc/gitlab/gitlab.rb
-        insertbefore: BOF
-        line: "gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8', '{{ hostvars['monitor']['ansible_host'] }}']"
-    
-    - name: Recofigure Gitlab to accept whitelist changes
-      shell: gitlab-ctl reconfigure
-
 - name: Save created variables to vars
   hosts: localhost
   tasks:
