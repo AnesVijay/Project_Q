@@ -2,7 +2,7 @@
   "__inputs": [
     {
       "name": "Prometheus",
-      "label": "prometheus",
+      "label": "Prometheus",
       "description": "",
       "type": "datasource",
       "pluginId": "prometheus",
@@ -31,8 +31,8 @@
     },
     {
       "type": "panel",
-      "id": "table-old",
-      "name": "Table (old)",
+      "id": "table",
+      "name": "Table",
       "version": ""
     },
     {
@@ -719,19 +719,45 @@
       "type": "timeseries"
     },
     {
-      "columns": [
-        {
-          "text": "Current",
-          "value": "current"
-        }
-      ],
       "datasource": {
         "type": "prometheus",
         "uid": "prometheusdatasource"
       },
-      "editable": true,
-      "error": false,
-      "fontSize": "100%",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "rgba(245, 54, 54, 0.9)",
+                "value": null
+              },
+              {
+                "color": "rgba(237, 129, 40, 0.89)",
+                "value": 10000000
+              },
+              {
+                "color": "rgba(50, 172, 45, 0.97)",
+                "value": 25000000
+              }
+            ]
+          },
+          "unit": "decbytes"
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 7,
         "w": 4,
@@ -739,30 +765,19 @@
         "y": 15
       },
       "id": 37,
-      "scroll": true,
-      "showHeader": true,
-      "sort": {
-        "col": 0,
-        "desc": true
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
       },
-      "styles": [
-        {
-          "align": "auto",
-          "colors": [
-            "rgba(245, 54, 54, 0.9)",
-            "rgba(237, 129, 40, 0.89)",
-            "rgba(50, 172, 45, 0.97)"
-          ],
-          "decimals": 2,
-          "pattern": "/.*/",
-          "thresholds": [
-            "10000000",
-            " 25000000"
-          ],
-          "type": "number",
-          "unit": "decbytes"
-        }
-      ],
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -803,8 +818,18 @@
         }
       ],
       "title": "Usage memory",
-      "transform": "timeseries_aggregations",
-      "type": "table-old"
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "includeTimeField": false,
+            "reducers": [
+              "lastNotNull"
+            ]
+          }
+        }
+      ],
+      "type": "table"
     },
     {
       "datasource": {
@@ -1166,6 +1191,6 @@
   "timezone": "browser",
   "title": "System & Docker Monitoring",
   "uid": "XI1YeOHGk",
-  "version": 5,
+  "version": 1,
   "weekStart": ""
 }
