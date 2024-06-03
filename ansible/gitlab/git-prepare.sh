@@ -6,12 +6,11 @@ while [[ $# -gt 0 ]]; do
         if [[ -n "$2" ]]; then
             link="$2"
             shift
-      else
-        echo "Нужно указать IP"
-        exit 1
-      fi
-      ;;
-  esac
+        else
+          echo "Нужно указать ссылку"
+          exit 1
+        fi 
+      ;;esac
   shift
 done
 

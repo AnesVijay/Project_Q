@@ -5,9 +5,6 @@ from urllib.parse import urljoin
 
 prometheus_url = 'http://<Prometheus IP>:9999'
 
-step = '1m'
-step_int = int(step[:1])
-
 # Экспортируются все метрики, собранные за последние delta минут
 delta: int = 30
 end_time = datetime.now(timezone.utc)
@@ -17,6 +14,8 @@ start_time = end_time - timedelta(minutes=delta)
 start = start_time.isoformat().replace("+00:00", "Z")
 end = end_time.isoformat().replace("+00:00", "Z")
 
+step = '1m'
+
 queries = {
     'CPU': 'sum(rate(container_cpu_usage_seconds_total{name=~".+"}' + f'[{step}])) by (name) * 100',
     'Net_received': 'sum by (name) (rate(container_network_receive_bytes_total{name=~".+"}' + f'[{step}]))',
@@ -24,6 +23,7 @@ queries = {
     'RAM': 'sum(container_memory_rss{name=~".+"}) by (name)'
 }
 
+step_int = int(step[:1])
 
 def save_to_csv(datas, queries, filename1):
     with open(filename1, 'w', newline='') as file:
