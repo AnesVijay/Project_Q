@@ -1,0 +1,2 @@
+serverAddress,port,path,method,expectedCode,adminPassword
+<ip_address>,80,/players/add,PUT,200,<admin_password>
